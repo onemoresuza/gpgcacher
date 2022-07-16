@@ -148,8 +148,8 @@ main() {
   trap 'rm -rf "${TMPDIR}"' EXIT INT
 
   for k in "${@}"; do
-    opt="${k##*:}"
-    key="${k%":${opt}"}"
+    opts="${k##*:}"
+    key="${k%":${opts}"}"
 
     is_cached "${key}"
     errcode="${?}"
@@ -167,28 +167,30 @@ main() {
         continue
         ;;
     esac
+    
+    cache_cmd=""
+    while IFS= read -r opt; do
+      if [ "${key}" != "${opt}" ]; then
+        case "${opt}" in
+          "nosign") cache_cmd="cache_nosign ${key} ${cache_cmd}" ;;
+          "passcmd"?*) cache_cmd="${cache_cmd} \"${opt#*[[:space:]]}\"" ;;
+          *)
+            warn "Unknown option \"${opt}\"; skipping \"${key}\"..."
+            continue 2
+            ;;
+        esac
+      fi
+    done <<EOF
+$(printf "%s\n" "${opts}" | tr ',' '\n')
+EOF
 
-    if [ "${key}" != "${opt}" ]; then
-      case "${opt}" in
-        "nosign")
-          cache_nosign "${key}"
-          errcode="${?}"
-          if [ "${errcode}" -ne 0 ]; then
-            case "${errcode}" in
-              "${GPG_ENC_FAIL}") warn "Gpg failed to encrypt with \"${key}\"" ;;
-              "${GPG_DEC_FAIL}") warn "Gpg failed to decrypt with \"${key}\"" ;;
-            esac
-          fi
-          ;;
-        *) warn "Unknown option \"${opt}\"; skipping \"${key}\"..." ;;
-      esac
+    case "${cache_cmd}" in
+      cache_*) ;;
+      *) cache_cmd="cache_sign ${key} ${cache_cmd}"
+    esac
+    echo "${cache_cmd}"
+  done
 
-      continue
-    fi
-
-    cache_sign "${key}" \
-      || warn "Gpg failed to sign with \"${key}\""
-    done
 }
 
 main "${@}"
