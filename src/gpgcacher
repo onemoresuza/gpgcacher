@@ -188,9 +188,17 @@ EOF
       cache_*) ;;
       *) cache_cmd="cache_sign ${key} ${cache_cmd}"
     esac
-    echo "${cache_cmd}"
-  done
 
+    eval "${cache_cmd}" || {
+      errcode="${?}"
+      case "${errcode}" in
+        "${GPG_SIGN_FAIL}") warn "Gpg failed to sing with \"${key}\"" ;;
+        "${GPG_ENC_FAIL}") warn "Gpg failed to encrypt with \"${key}\"" ;;
+        "${GPG_DEC_FAIL}") warn "Gpg failed to decrypt with \"${key}\"" ;;
+      esac
+    }
+
+  done
 }
 
 main "${@}"
