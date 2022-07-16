@@ -113,7 +113,7 @@ cache_sign() {
       --batch --pinentry-mode loopback --passphrase-fd 0 \
         --sign --local-user \
         "${1}" "${data_file}" 1>/dev/null <<EOF || return "${GPG_SIGN_FAIL}"
-$(${pass_cmd#*[[:space:]]})
+$(eval "${pass_cmd}")
 EOF
   fi
 }
