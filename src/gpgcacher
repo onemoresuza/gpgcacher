@@ -125,22 +125,35 @@ EOF
 #   GPG_ENC_FAIL
 #   GPG_DEC_FAIL
 # Parameters:
-#   1: Gpg key.
+#   1: Gpg key, 2: A password command (optional).
 # Returns:
 #   GPG_ENC_FAIL, when gpg fails to encrypt;
 #   GPG_DEC_FAIL, when gpg fails to decrypt.
 # 
 cache_nosign() {
+  pass_cmd="${2}"
   encstr="$(
     printf "GPG" \
       | gpg --armor -o- --encrypt \
         --no-options --use-agent --no-tty --recipient "${1}" 2>/dev/null
   )" || return "${GPG_ENC_FAIL}"
 
-  printf "%s" "${encstr}" \
-    | gpg -o /dev/null --decrypt \
-      --no-options --use-agent --no-tty --default-key "${1}" 2>/dev/null \
-      || return "${GPG_DEC_FAIL}"
+  if [ -z "${pass_cmd}" ]; then
+    printf "%s" "${encstr}" \
+      | gpg -o /dev/null --decrypt \
+        --no-options --use-agent --no-tty --default-key "${1}" 2>/dev/null \
+        || return "${GPG_DEC_FAIL}"
+  else
+    data_file="${TMPDIR}/data_file"
+    printf "%s" "${encstr}" 1>"${data_file}"
+    gpg -o /dev/null --decrypt \
+      --no-options --use-agent --no-tty \
+      --batch --pinentry-mode loopback --passphrase-fd 0 \
+      --default-key "${1}" "${data_file}" \
+      1>/dev/null <<EOF || return "${GPG_DEC_FAIL}"
+$(eval "${pass_cmd}")
+EOF
+  fi
 }
 
 main() {
