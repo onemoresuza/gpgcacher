@@ -44,6 +44,6 @@ fi
 ```
 
 Note the `--sign` option in the `gpg`. Moreover, the error message for this case
-is very misleading, since it leads the user question either the install or the
+is very misleading, since it leads the user to question either the install or the
 configuration in `gpg-agent.conf` of the `pinentry` program, which has nothing
 to do with the problem at hand.
