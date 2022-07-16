@@ -116,6 +116,8 @@ cache_sign() {
 $(eval "${pass_cmd}")
 EOF
   fi
+
+  return 0
 }
 
 #
@@ -154,6 +156,8 @@ cache_nosign() {
 $(eval "${pass_cmd}")
 EOF
   fi
+
+  return 0
 }
 
 main() {
@@ -202,14 +206,17 @@ EOF
       *) cache_cmd="cache_sign ${key} ${cache_cmd}"
     esac
 
-    eval "${cache_cmd}" || {
-      errcode="${?}"
+    eval "${cache_cmd}"
+    errcode="${?}"
+    if [ "${errcode}" -eq 0 ]; then
+      warn "Successfully cached \"${key}\""
+    else
       case "${errcode}" in
         "${GPG_SIGN_FAIL}") warn "Gpg failed to sing with \"${key}\"" ;;
         "${GPG_ENC_FAIL}") warn "Gpg failed to encrypt with \"${key}\"" ;;
         "${GPG_DEC_FAIL}") warn "Gpg failed to decrypt with \"${key}\"" ;;
       esac
-    }
+    fi
 
   done
 }
