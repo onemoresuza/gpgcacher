@@ -1,0 +1,172 @@
+#!/bin/sh
+
+PROGNAME="${0##*/}"
+
+#
+# Error Codes
+#
+SHELL_STD_ERR=1
+GPG_SING_FAIL=$((SHELL_STD_ERR + 1))
+GPG_ENC_FAIL=$((GPG_SING_FAIL + 1))
+GPG_DEC_FAIL=$((GPG_ENC_FAIL + 1))
+GPG_KEY_NOT_FOUND=$((GPG_DEC_FAIL + 1))
+GPG_AGENT_FAIL=$((GPG_KEY_NOT_FOUND + 1))
+GPG_AGENT_NO_CACHE=$((GPG_AGENT_FAIL + 1))
+
+#
+# Instead of creating a different error code for each gpg-connect-agent error,
+# have one (GPG_AGENT_FAIL) and save its error message to be used with `warn()`.
+#
+GPG_AGENT_ERRMSG=""
+
+#
+# Warn the user through stderr with a short one line message.
+# Globals
+#   PROGNAME
+# Parameters:
+#   1: error code.
+#
+warn() {
+  printf "%s: %s.\n" "${PROGNAME}" "${1}" 1>&2
+}
+
+#
+# Check if a key is cached by using its keygrip with gpg-connect-agent.
+# Globals:
+#   GPG_AGENT_FAIL
+#   GPG_AGENT_NO_CACHE
+#   GPG_AGENT_ERRMSG
+# Parameters:
+#   1: Gpg key.
+#
+# Returns:
+#   GPG_KEY_NOT_FOUND, when gpg does not find the given key;
+#   GPG_AGENT_FAIL, when gpg-connect-agent prints an error to stdout.
+#
+is_cached() {
+  gpg_output="$(gpg --with-keygrip --list-secret-keys --with-colons "${1}")" \
+    || return "${GPG_KEY_NOT_FOUND}"
+
+  keygrips=""
+  while read -r line; do
+    case "${line}" in
+      grp*)
+        kg="${line%:}"
+        kg="${kg##*:}"
+        keygrips="${keygrips} ${kg}"
+        ;;
+      *) continue ;;
+    esac
+  done <<EOF
+  $(printf "%s\n" "${gpg_output}") 
+EOF
+
+  for kg in ${keygrips}; do
+    gpg_agent_output="$(gpg-connect-agent "keyinfo ${kg}" /bye)"
+
+    case "${gpg_agent_output}" in
+      ERR*)
+        GPG_AGENT_ERRMSG="${gpg_agent_output}"
+        return "${GPG_AGENT_FAIL}"
+        ;;
+      OK*) continue ;;
+      *)
+        cache_char="${gpg_agent_output#*D - - }"
+        cache_char="${cache_char%% *}"
+        #
+        # Do string comparison, for the other possible result is a '-'.
+        #
+        [ "${cache_char}" = "1" ] && return 0
+        ;;
+    esac
+  done
+
+  return "${GPG_AGENT_NO_CACHE}"
+}
+
+#
+# Cache a gpg key by making it sign a newline that's outputted to /dev/null.
+# Globals:
+#   GPG_SING_FAIL
+# Parameters:
+#   1: Gpg key.
+# Returns:
+#   GPG_SING_FAIL, when gpg fails to sign.
+#
+cache_sign() {
+  printf "\n" \
+    | gpg -o- --no-options --use-agent --no-tty --sign --local-user "${1}" \
+      1>/dev/null 2>&1 || return "${GPG_SING_FAIL}"
+}
+
+#
+# Cache a gpg key by making it encrypt and decrypt, respectively, stdout and
+# stdin.
+# Globals:
+#   GPG_ENC_FAIL
+#   GPG_DEC_FAIL
+# Parameters:
+#   1: Gpg key.
+# Returns:
+#   GPG_ENC_FAIL, when gpg fails to encrypt;
+#   GPG_DEC_FAIL, when gpg fails to decrypt.
+# 
+cache_nosign() {
+  encstr="$(
+    printf "GPG" \
+      | gpg --armor -o- --encrypt \
+        --no-options --use-agent --no-tty --recipient "${1}" 2>/dev/null
+  )" || return "${GPG_ENC_FAIL}"
+
+  printf "%s" "${encstr}" \
+    | gpg -o /dev/null --decrypt \
+      --no-options --use-agent --no-tty --default-key "${1}" 2>/dev/null \
+      || return "${GPG_DEC_FAIL}"
+}
+
+main() {
+  for k in "${@}"; do
+    opt="${k##*:}"
+    key="${k%":${opt}"}"
+
+    is_cached "${key}"
+    errcode="${?}"
+    case "${errcode}" in
+      0)
+        warn "Key \"${key}\" is already cached; skipping..."
+        continue
+        ;;
+      "${GPG_KEY_NOT_FOUND}")
+        warn "Gpg failed to found key \"${key}\""
+        continue
+        ;;
+      "${GPG_AGENT_FAIL}")
+        warn "gpg-connect-agent error: \"${GPG_AGENT_ERRMSG}\""
+        continue
+        ;;
+    esac
+
+    if [ "${key}" != "${opt}" ]; then
+      case "${opt}" in
+        "nosign")
+          cache_nosign "${key}"
+          errcode="${?}"
+          if [ "${errcode}" -ne 0 ]; then
+            case "${errcode}" in
+              "${GPG_ENC_FAIL}") warn "Gpg failed to encrypt with \"${key}\"" ;;
+              "${GPG_DEC_FAIL}") warn "Gpg failed to decrypt with \"${key}\"" ;;
+            esac
+          fi
+          ;;
+        *) warn "Unknown option \"${opt}\"; skipping \"${key}\"..." ;;
+      esac
+
+      continue
+    fi
+
+    cache_sign "${key}" \
+      || warn "Gpg failed to sign with \"${key}\""
+    done
+}
+
+main "${@}"
