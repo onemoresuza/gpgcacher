@@ -6,8 +6,8 @@ PROGNAME="${0##*/}"
 # Error Codes
 #
 SHELL_STD_ERR=1
-GPG_SING_FAIL=$((SHELL_STD_ERR + 1))
-GPG_ENC_FAIL=$((GPG_SING_FAIL + 1))
+GPG_SIGN_FAIL=$((SHELL_STD_ERR + 1))
+GPG_ENC_FAIL=$((GPG_SIGN_FAIL + 1))
 GPG_DEC_FAIL=$((GPG_ENC_FAIL + 1))
 GPG_KEY_NOT_FOUND=$((GPG_DEC_FAIL + 1))
 GPG_AGENT_FAIL=$((GPG_KEY_NOT_FOUND + 1))
@@ -87,16 +87,16 @@ EOF
 #
 # Cache a gpg key by making it sign a newline that's outputted to /dev/null.
 # Globals:
-#   GPG_SING_FAIL
+#   GPG_SIGN_FAIL
 # Parameters:
 #   1: Gpg key.
 # Returns:
-#   GPG_SING_FAIL, when gpg fails to sign.
+#   GPG_SIGN_FAIL, when gpg fails to sign.
 #
 cache_sign() {
   printf "\n" \
     | gpg -o- --no-options --use-agent --no-tty --sign --local-user "${1}" \
-      1>/dev/null 2>&1 || return "${GPG_SING_FAIL}"
+      1>/dev/null 2>&1 || return "${GPG_SIGN_FAIL}"
 }
 
 #
