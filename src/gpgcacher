@@ -45,8 +45,10 @@ warn() {
 #   1: Gpg key.
 #
 # Returns:
+#   0, when successful;
 #   GPG_KEY_NOT_FOUND, when gpg does not find the given key;
-#   GPG_AGENT_FAIL, when gpg-connect-agent prints an error to stdout.
+#   GPG_AGENT_FAIL, when gpg-connect-agent prints an error to stdout;
+#   GPG_AGENT_NO_CACHE, when the key is not cached.
 #
 is_cached() {
   gpg_output="$(gpg --with-keygrip --list-secret-keys --with-colons "${1}")" \
@@ -96,6 +98,7 @@ EOF
 # Parameters:
 #   1: Gpg key, 2: A password command (optional).
 # Returns:
+#   0, when successful;
 #   GPG_SIGN_FAIL, when gpg fails to sign.
 #
 cache_sign() {
@@ -129,6 +132,7 @@ EOF
 # Parameters:
 #   1: Gpg key, 2: A password command (optional).
 # Returns:
+#   0, when successful;
 #   GPG_ENC_FAIL, when gpg fails to encrypt;
 #   GPG_DEC_FAIL, when gpg fails to decrypt.
 # 
