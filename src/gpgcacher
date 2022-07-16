@@ -243,7 +243,7 @@ EOF
       warn "Successfully cached \"${key}\"."
     else
       case "${errcode}" in
-        "${GPG_SIGN_FAIL}") warn "Gpg failed to sing with \"${key}\"." ;;
+        "${GPG_SIGN_FAIL}") warn "Gpg failed to sign with \"${key}\"." ;;
         "${GPG_ENC_FAIL}") warn "Gpg failed to encrypt with \"${key}\"." ;;
         "${GPG_DEC_FAIL}") warn "Gpg failed to decrypt with \"${key}\"." ;;
       esac
