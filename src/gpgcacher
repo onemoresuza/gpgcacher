@@ -94,14 +94,28 @@ EOF
 # Globals:
 #   GPG_SIGN_FAIL
 # Parameters:
-#   1: Gpg key.
+#   1: Gpg key, 2: A password command (optional).
 # Returns:
 #   GPG_SIGN_FAIL, when gpg fails to sign.
 #
 cache_sign() {
-  printf "\n" \
-    | gpg -o- --no-options --use-agent --no-tty --sign --local-user "${1}" \
-      1>/dev/null 2>&1 || return "${GPG_SIGN_FAIL}"
+  pass_cmd="${2}"
+  if [ -z "${pass_cmd}" ]; then
+    printf "\n" \
+      | gpg -o- --no-options --use-agent --no-tty --sign --local-user "${1}" \
+        1>/dev/null 2>&1 || return "${GPG_SIGN_FAIL}"
+  else
+    data_file="${TMPDIR}/data_file"
+    printf "\n" 1>"${data_file}"
+
+    gpg -o /dev/null \
+      --no-options --use-agent --no-tty \
+      --batch --pinentry-mode loopback --passphrase-fd 0 \
+        --sign --local-user \
+        "${1}" "${data_file}" 1>/dev/null <<EOF || return "${GPG_SIGN_FAIL}"
+$(${pass_cmd#*[[:space:]]})
+EOF
+  fi
 }
 
 #
