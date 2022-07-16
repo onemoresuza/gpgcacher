@@ -164,9 +164,36 @@ EOF
   return 0
 }
 
+#
+# Print the help message to stdout.
+# Globals:
+#   PROGNAME
+#
+help_msg() {
+  printf """
+  Usage: %s [OPTION]... KEY_ID[:CACHE_OPTS] [KEY_ID[:CACHE_OPTS]]...
+  Cache gpg keys.
+
+  -h,\t\tPrint this help message to stdout.
+
+  " "${PROGNAME}"
+}
+
 main() {
   mkdir -p "${TMPDIR}"
   trap 'rm -rf "${TMPDIR}"' EXIT INT
+
+  sopts="h"
+  while getopts "${sopts}" opt; do
+    case "${opt}" in
+      "h")
+        help_msg
+        exit 0
+        ;;
+    esac
+  done
+
+  shift $((OPTIND - 1))
 
   for k in "${@}"; do
     opts="${k##*:}"
