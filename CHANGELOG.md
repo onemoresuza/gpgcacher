@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.2] - 2022-07-16
+### Fixed
+- Add missing `-V` option description to `help_msg()`.
+### Changed
+- Remove ending dots from `help_msg()` option descriptions output.
+
 ## [0.0.1] - 2022-07-16
 ### Added
 - The script with the name of the project `src/gpgcacher`.

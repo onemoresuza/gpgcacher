@@ -1,7 +1,7 @@
 #!/bin/sh
 
 PROGNAME="${0##*/}"
-VERSION="v0.0.1"
+VERSION="v0.0.2"
 TMPDIR="${TMPDIR:-"${XDG_RUNTIME_DIR}"}"
 randstr() { tr -dc "[:alnum:]" </dev/urandom | dd count=1 bs=12 2>/dev/null; }
 [ -d "${TMPDIR}" ] \
@@ -175,7 +175,8 @@ help_msg() {
   Usage: %s [OPTION]... KEY_ID[:CACHE_OPTS] [KEY_ID[:CACHE_OPTS]]...
   Cache gpg keys.
 
-  -h,\t\tPrint this help message to stdout.
+  -h,\t\tPrint this help message to stdout
+  -V,\t\tPrint the script's version
 
   " "${PROGNAME}"
 }
