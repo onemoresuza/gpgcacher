@@ -105,8 +105,8 @@ cache_sign() {
   pass_cmd="${2}"
   if [ -z "${pass_cmd}" ]; then
     printf "\n" \
-      | gpg -o- --no-options --use-agent --no-tty --sign --local-user "${1}" \
-        1>/dev/null 2>&1 || return "${GPG_SIGN_FAIL}"
+      | gpg -o /dev/null --no-options --use-agent --no-tty --sign --local-user "${1}" \
+        2>/dev/null || return "${GPG_SIGN_FAIL}"
   else
     data_file="${TMPDIR}/data_file"
     printf "\n" 1>"${data_file}"
@@ -115,7 +115,7 @@ cache_sign() {
       --no-options --use-agent --no-tty \
       --batch --pinentry-mode loopback --passphrase-fd 0 \
         --sign --local-user \
-        "${1}" "${data_file}" 1>/dev/null <<EOF || return "${GPG_SIGN_FAIL}"
+        "${1}" "${data_file}" 2>/dev/null <<EOF || return "${GPG_SIGN_FAIL}"
 $(eval "${pass_cmd}")
 EOF
   fi
@@ -156,7 +156,7 @@ cache_nosign() {
       --no-options --use-agent --no-tty \
       --batch --pinentry-mode loopback --passphrase-fd 0 \
       --default-key "${1}" "${data_file}" \
-      1>/dev/null <<EOF || return "${GPG_DEC_FAIL}"
+      2>/dev/null <<EOF || return "${GPG_DEC_FAIL}"
 $(eval "${pass_cmd}")
 EOF
   fi
