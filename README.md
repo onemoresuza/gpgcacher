@@ -2,7 +2,7 @@
 
 A posix shell script for caching gpg's encryption and signing keys.
 
-# Purpose
+# Rationale
 Why not just use [keychain](https://www.funtoo.org/Funtoo:Keychain)? Firstly,
 let the intended usage of this script be written:
 
