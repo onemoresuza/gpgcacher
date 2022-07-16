@@ -1,6 +1,7 @@
 #!/bin/sh
 
 PROGNAME="${0##*/}"
+VERSION="v0.0.1"
 TMPDIR="${TMPDIR:-"${XDG_RUNTIME_DIR}"}"
 randstr() { tr -dc "[:alnum:]" </dev/urandom | dd count=1 bs=12 2>/dev/null; }
 [ -d "${TMPDIR}" ] \
@@ -183,11 +184,15 @@ main() {
   mkdir -p "${TMPDIR}"
   trap 'rm -rf "${TMPDIR}"' EXIT INT
 
-  sopts="h"
+  sopts="hV"
   while getopts "${sopts}" opt; do
     case "${opt}" in
       "h")
         help_msg
+        exit 0
+        ;;
+      "V")
+        printf "%s %s\n" "${PROGNAME}" "${VERSION}"
         exit 0
         ;;
     esac
