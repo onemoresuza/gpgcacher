@@ -1,6 +1,11 @@
 #!/bin/sh
 
 PROGNAME="${0##*/}"
+TMPDIR="${TMPDIR:-"${XDG_RUNTIME_DIR}"}"
+randstr() { tr -dc "[:alnum:]" </dev/urandom | dd count=1 bs=12 2>/dev/null; }
+[ -d "${TMPDIR}" ] \
+  && TMPDIR="${TMPDIR}/gpgcacher.$(randstr)" \
+  || TMPDIR="/dev/shm/gpgcacher.$(randstr)"
 
 #
 # Error Codes
@@ -125,6 +130,9 @@ cache_nosign() {
 }
 
 main() {
+  mkdir -p "${TMPDIR}"
+  trap 'rm -rf "${TMPDIR}"' EXIT INT
+
   for k in "${@}"; do
     opt="${k##*:}"
     key="${k%":${opt}"}"
