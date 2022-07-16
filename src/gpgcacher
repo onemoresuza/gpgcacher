@@ -32,7 +32,7 @@ GPG_AGENT_ERRMSG=""
 #   1: error code.
 #
 warn() {
-  printf "%s: %s.\n" "${PROGNAME}" "${1}" 1>&2
+  printf "%s: %s\n" "${PROGNAME}" "${1}" 1>&2
 }
 
 #
@@ -180,11 +180,11 @@ main() {
         continue
         ;;
       "${GPG_KEY_NOT_FOUND}")
-        warn "Gpg failed to found key \"${key}\""
+        warn "Gpg failed to found key \"${key}\"."
         continue
         ;;
       "${GPG_AGENT_FAIL}")
-        warn "gpg-connect-agent error: \"${GPG_AGENT_ERRMSG}\""
+        warn "gpg-connect-agent error: \"${GPG_AGENT_ERRMSG}\"."
         continue
         ;;
     esac
@@ -213,12 +213,12 @@ EOF
     eval "${cache_cmd}"
     errcode="${?}"
     if [ "${errcode}" -eq 0 ]; then
-      warn "Successfully cached \"${key}\""
+      warn "Successfully cached \"${key}\"."
     else
       case "${errcode}" in
-        "${GPG_SIGN_FAIL}") warn "Gpg failed to sing with \"${key}\"" ;;
-        "${GPG_ENC_FAIL}") warn "Gpg failed to encrypt with \"${key}\"" ;;
-        "${GPG_DEC_FAIL}") warn "Gpg failed to decrypt with \"${key}\"" ;;
+        "${GPG_SIGN_FAIL}") warn "Gpg failed to sing with \"${key}\"." ;;
+        "${GPG_ENC_FAIL}") warn "Gpg failed to encrypt with \"${key}\"." ;;
+        "${GPG_DEC_FAIL}") warn "Gpg failed to decrypt with \"${key}\"." ;;
       esac
     fi
 
