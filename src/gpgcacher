@@ -93,6 +93,38 @@ EOF
 }
 
 #
+# Check if a key in a smartcard is cached by using its keygrip with
+# gpg-connect-agent.
+# Globals:
+#   GPG_AGENT_FAIL
+#   GPG_AGENT_NO_CACHE
+#   GPG_AGENT_ERRMSG
+# Parameters:
+#   1: Gpg key.
+#
+# Returns:
+#   0, when successful;
+#   GPG_KEY_NOT_FOUND, when gpg does not find the given key;
+#   GPG_AGENT_FAIL, when gpg-connect-agent prints an error to stdout;
+#   GPG_AGENT_NO_CACHE, when the key is not cached.
+#
+is_sc_cached() {
+  gpg --list-secret-keys "${1}" 1>/dev/null 2>&1 || return "${GPG_KEY_NOT_FOUND}"
+
+  gpg_agent_output="$(gpg-connect-agent "scd getinfo card_list" /bye)"
+
+  case "${gpg_agent_output}" in
+    ERR*)
+      GPG_AGENT_ERRMSG="${gpg_agent_output}"
+      return "${GPG_AGENT_FAIL}"
+      ;;
+    S[[:space:]]SERIALNO[[:space:]]*) return 0;;
+  esac
+
+  return "${GPG_AGENT_NO_CACHE}"
+}
+
+#
 # Cache a gpg key by making it sign a newline that's outputted to /dev/null.
 # Globals:
 #   GPG_SIGN_FAIL
@@ -204,9 +236,35 @@ main() {
   for k in "${@}"; do
     opts="${k##*:}"
     key="${k%":${opts}"}"
+    
+    cache_cmd=""
+    cache_check_type="nosc"
+    while IFS= read -r opt; do
+      if [ "${key}" != "${opt}" ]; then
+        case "${opt}" in
+          "nosign") cache_cmd="cache_nosign ${key} ${cache_cmd}" ;;
+          "passcmd"?*) cache_cmd="${cache_cmd} \"${opt#*[[:space:]]}\"" ;;
+          "sc") cache_check_type="sc" ;;
+          *)
+            warn "Unknown option \"${opt}\"; skipping \"${key}\"..."
+            continue 2
+            ;;
+        esac
+      fi
+    done <<EOF
+$(printf "%s\n" "${opts}" | tr ',' '\n')
+EOF
 
-    is_cached "${key}"
-    errcode="${?}"
+    case "${cache_check_type}" in
+      "nosc") 
+        is_cached "${key}"
+        errcode="${?}"
+        ;;
+      "sc")
+        is_sc_cached "${key}"
+        errcode="${?}"
+        ;;
+    esac
     case "${errcode}" in
       0)
         warn "Key \"${key}\" is already cached; skipping..."
@@ -221,22 +279,6 @@ main() {
         continue
         ;;
     esac
-    
-    cache_cmd=""
-    while IFS= read -r opt; do
-      if [ "${key}" != "${opt}" ]; then
-        case "${opt}" in
-          "nosign") cache_cmd="cache_nosign ${key} ${cache_cmd}" ;;
-          "passcmd"?*) cache_cmd="${cache_cmd} \"${opt#*[[:space:]]}\"" ;;
-          *)
-            warn "Unknown option \"${opt}\"; skipping \"${key}\"..."
-            continue 2
-            ;;
-        esac
-      fi
-    done <<EOF
-$(printf "%s\n" "${opts}" | tr ',' '\n')
-EOF
 
     case "${cache_cmd}" in
       cache_*) ;;
