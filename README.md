@@ -47,3 +47,7 @@ Note the `--sign` option in the `gpg`. Moreover, the error message for this case
 is very misleading, since it leads the user to question either the install or the
 configuration in `gpg-agent.conf` of the `pinentry` program, which has nothing
 to do with the problem at hand.
+
+# Acknowledgments
+[demure](https://demu.red/blog/2017/03/how-to-check-if-your-smartcards-gpg-key-is-in-cache-part-3/)
+for finding a way check to check if a gpg key in a smart card is cached.
