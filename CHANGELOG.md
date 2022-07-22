@@ -4,11 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
 ## [1.0.0]
 ### Changed
-- Keys must now be passed by keygrip.
 - Authentication keys are now supported.
+- `gpg-connect-agent` and `gpg-preset-passphrase` are now used to cache
+  keys.
+### Breaking Changes
+#### Removed
+- `nosign` option; there's no need anymore, because of the new caching
+  implementation.
+- Caching of smart card keys (temporally).
+- Caching of master keys; now only its sub keys are cached.
 
 ## [0.1.0]
 ### Added
