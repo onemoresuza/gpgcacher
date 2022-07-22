@@ -243,6 +243,7 @@ help_msg() {
   Usage: %s [OPTION]... KEY_ID[:CACHE_OPTS] [KEY_ID[:CACHE_OPTS]]...
   Cache gpg keys.
 
+  -g,\t\tSet the path to the gpg-preset-passphrase binary
   -h,\t\tPrint this help message to stdout
   -V,\t\tPrint the script's version
 
@@ -253,12 +254,20 @@ main() {
   mkdir -p "${TMPDIR}"
   trap 'rm -rf "${TMPDIR}"' EXIT INT
 
-  sopts="hV"
+  sopts="g:hV"
   while getopts "${sopts}" opt; do
     case "${opt}" in
       "h")
         help_msg
         exit 0
+        ;;
+      "g")
+        [ -x "${OPTARG}" ] || {
+          warn "\"${OPTARG}\" is not executable."
+          exit 1
+        }
+
+        GPP_BIN="${OPTARG}"
         ;;
       "V")
         printf "%s %s\n" "${PROGNAME}" "${VERSION}"
@@ -335,4 +344,4 @@ EOF
   done
 }
 
-cache_key 37A0FE0E152A73708B4E0044A640DC0A2D59B3C6 "printf \"1234\""
+main "${@}"
