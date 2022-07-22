@@ -331,10 +331,12 @@ EOF
       errcode="${?}"
       case "${errcode}" in
         "${GPP_FAIL}")
+          warn "Key \"${key}\" not cached."
           warn "${GPP_ERRMSG}."
           continue 2
           ;;
         "${GPG_AGENT_FAIL}")
+          warn "Key \"${key}\" not cached."
           warn "${GPG_AGENT_ERRMSG}."
           continue 2
           ;;
