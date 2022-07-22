@@ -271,6 +271,35 @@ is_passphrase_correct() {
   esac
 }
 
+#
+# Clear the cached passphrase.
+#
+# Globals:
+#   GPG_AGENT_FAIL
+#   GPG_AGENT_ERRMSG
+#
+# Parameters:
+#   1: keygrip.
+#
+# Returns:
+#   0, when successful;
+#   GPG_AGENT_FAIL, when gpg-connect-agent fails to clear the cache.
+#
+clear_cache() {
+  unset gpg_agent_output
+  gpg_agent_output="$(gpg-connect-agent <<EOF
+CLEAR_PASSPHRASE ${1}
+EOF
+)"
+  case "${gpg_agent_output}" in
+    OK*) return 0;;
+    *)
+      GPG_AGENT_ERRMSG="${gpg_agent_output}"
+      return "${GPG_AGENT_FAIL}"
+      ;;
+  esac
+}
+
 
 #
 # Print the help message to stdout.
@@ -390,13 +419,16 @@ EOF
         warn "Key \"${key}\" not cached."
 
         case "${errcode}" in
-          "${GPG_ENC_FAIL}")
-            warn "Gpg failed to encrypt test message."
-            ;;
-          "${GPG_DEC_FAIL}")
-            warn "Gpg failed to decrypt test message."
-            ;;
+          "${GPG_ENC_FAIL}") warn "Gpg failed to encrypt test message." ;;
+          "${GPG_DEC_FAIL}") warn "Gpg failed to decrypt test message." ;;
         esac
+
+        warn "Clearing wrong password in cache."
+        clear_cache "${keygrip}" || {
+          warn "Failed to clear wrong password in cache."
+          warn "Try to manually clear it by passing \"${key}\" keygrip"
+          warn "to the CLEAR_PASSPHRASE command of gpg-connect-agent."
+        }
 
         continue
       fi
