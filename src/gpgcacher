@@ -37,6 +37,58 @@ warn() {
 }
 
 #
+# Print to stdout a '\n' separated list of keytype, key fingerprint and
+# keygrip of the sub keys.
+# Globals:
+#   GPG_KEY_NOT_FOUND
+# Parameters:
+#   1: key-id.
+# Returns:
+#   0, when successful;
+#   GPG_KEY_NOT_FOUND, when gpg fails to find the given key-id.
+#
+print_trios() {
+  unset gpg_output
+  gpg_output="$(gpg --list-secret-keys --with-keygrip --with-colons "${1}")" \
+    || return "${GPG_KEY_NOT_FOUND}"
+
+  unset passed_uid_line keytype keyfpr keygrip
+  while IFS=":" read -r infotype info; do
+    case "${infotype}" in
+      uid)
+        passed_uid_line="1"
+        continue
+        ;;
+    esac
+
+    [ -z "${passed_uid_line}" ] && continue
+
+    case "${infotype}" in
+      ssb)
+        keytype="${info%+*}"
+        keytype="${keytype%:::}"
+        keytype="${keytype##*:}"
+        ;;
+      fpr)
+        keyfpr="${info%:}"
+        keyfpr="${keyfpr##*:}"
+        ;;
+      grp)
+        keygrip="${info%:}"
+        keygrip="${keygrip##*:}"
+        printf "%s,%s,%s\n" "${keytype}" "${keyfpr}" "${keygrip}"
+        unset keytype keyfpr keygrip
+        ;;
+    esac
+  done <<EOF
+$(printf "%s\n" "${gpg_output}")
+EOF
+
+  return 0
+}
+
+
+#
 # Check if a key is cached by using its keygrip with gpg-connect-agent.
 # Globals:
 #   GPG_AGENT_FAIL
@@ -300,4 +352,4 @@ EOF
   done
 }
 
-main "${@}"
+print_trios 0xF2ED14CBC70C4F61
