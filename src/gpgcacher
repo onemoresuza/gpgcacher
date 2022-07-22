@@ -144,6 +144,31 @@ EOF
 
   return 0
 }
+#
+# Check if a non smart card key is cached.
+#
+# Globals:
+#   GPG_AGENT_NO_CACHE
+#
+# Parameters:
+#   1: keygrip
+#
+# Returns:
+#   0, when successful;
+#   GPG_AGENT_NO_CACHE, when the key is not cached.
+#
+is_cached() {
+  gpg_agent_output="$(
+      gpg-connect-agent <<EOF
+GET_PASSPHRASE --no-ask ${1} + Passphrase:+ No+passcmd+provide.+A+passphrase+is+needed.
+EOF
+)"
+  case "${gpg_agent_output}" in
+    OK*) return 0 ;;
+    *) return "${GPG_AGENT_NO_CACHE}" ;;
+  esac
+}
+
 
 #
 # Check if a key in a smartcard is cached by using its keygrip with
@@ -342,6 +367,7 @@ EOF
         is_sc_cached "${key}"
         errcode="${?}"
         ;;
+      *) check_cache_by_keygrip="1" ;;
     esac
     case "${errcode}" in
       0)
@@ -359,6 +385,14 @@ EOF
     esac
 
     while IFS="," read -r keytype keyfpr keygrip; do
+
+      [ -n "${check_cache_by_keygrip}" ] && {
+        is_cached "${keygrip}" && {
+          warn "Sub ${keytype} key is cached; skipping..."
+          continue
+        }
+      }
+
       unset errcode
       cache_key "${keygrip}" "${passcmd}"
       errcode="${?}"
