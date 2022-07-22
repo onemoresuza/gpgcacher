@@ -263,6 +263,11 @@ help_msg() {
   -h,\t\tPrint this help message to stdout
   -V,\t\tPrint the script's version
 
+  CACHE_OPTS
+
+  passcmd PASS_CMD,\tUse the stdout of PASS_CMD as the passphrase
+  sc,\t\t\tIndicate that the key is in a smartcard
+
   " "${PROGNAME}"
 }
 
