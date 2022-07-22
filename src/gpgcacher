@@ -274,6 +274,7 @@ help_msg() {
   Usage: %s [OPTION]... KEY_ID[:CACHE_OPTS] [KEY_ID[:CACHE_OPTS]]...
   Cache gpg keys.
 
+  -a,\t\tAllow ssh keys cache to be tested
   -g,\t\tSet the path to the gpg-preset-passphrase binary
   -h,\t\tPrint this help message to stdout
   -V,\t\tPrint the script's version
