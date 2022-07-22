@@ -3,6 +3,7 @@
 PROGNAME="${0##*/}"
 VERSION="v0.1.0"
 GPP_BIN="${GPGCACHE_GPP_BIN:-/usr/lib/gnupg/gpg-preset-passphrase}"
+ALLOW_SSH_KEY_TEST=""
 TMPDIR="${TMPDIR:-"${XDG_RUNTIME_DIR}"}"
 randstr() { tr -dc "[:alnum:]" </dev/urandom | dd count=1 bs=12 2>/dev/null; }
 [ -d "${TMPDIR}" ] \
@@ -20,6 +21,8 @@ GPG_KEY_NOT_FOUND=$((GPG_DEC_FAIL + 1))
 GPG_AGENT_FAIL=$((GPG_KEY_NOT_FOUND + 1))
 GPG_AGENT_NO_CACHE=$((GPG_AGENT_FAIL + 1))
 GPP_FAIL=$((GPG_AGENT_FAIL + 1))
+GPG_EXP_SSH_FAIL=$((GPP_FAIL + 1))
+SSH_ADD_TEST_FAIL=$((GPG_EXP_SSH_FAIL + 1))
 
 #
 # Instead of creating a different error code for each gpg-connect-agent error,
@@ -214,6 +217,18 @@ is_passphrase_correct() {
           --sign --local-user "${2}" 2>/dev/null \
         || return "${GPG_SIGN_FAIL}"
       ;;
+    a)
+      [ -z "${ALLOW_SSH_KEY_TEST}" ] && return 0
+      unset ssh_pub_key
+      ssh_pub_key="${TMPDIR}/ssh_pub_key"
+      : 1>"${ssh_pub_key}"
+
+      gpg -o "${ssh_pub_key}" --export-ssh-key "${2}" 2>/dev/null \
+        || return "${GPG_EXP_SSH_FAIL}"
+
+      ssh-add -T "${ssh_pub_key}" \
+        || return "${SSH_ADD_TEST_FAIL}"
+      ;;
   esac
 
   return 0
@@ -275,13 +290,14 @@ main() {
   mkdir -p "${TMPDIR}"
   trap 'rm -rf "${TMPDIR}"' EXIT INT
 
-  sopts="g:hV"
+  sopts="ag:hV"
   while getopts "${sopts}" opt; do
     case "${opt}" in
       "h")
         help_msg
         exit 0
         ;;
+      "a") ALLOW_SSH_KEY_TEST="1" ;;
       "g")
         [ -x "${OPTARG}" ] || {
           warn "\"${OPTARG}\" is not executable."
@@ -370,6 +386,8 @@ EOF
           "${GPG_ENC_FAIL}") warn "Gpg failed to encrypt test message." ;;
           "${GPG_DEC_FAIL}") warn "Gpg failed to decrypt test message." ;;
           "${GPG_SIGN_FAIL}") warn "Gpg failed to sign test message." ;;
+          "${GPG_EXP_SSH_FAIL}") warn "Gpg failed to export ssh key." ;;
+          "${SSH_ADD_TEST_FAIL}") warn "ssh-add failed to test public key." ;;
         esac
 
         warn "Clearing wrong password in cache."
