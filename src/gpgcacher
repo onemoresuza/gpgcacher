@@ -282,12 +282,12 @@ main() {
     opts="${k##*:}"
     key="${k%":${opts}"}"
     
-    if [ "${key}" != "${opt}" ]; then
-      cache_cmd=""
+    if [ "${key}" != "${opts}" ]; then
+      passcmd=""
       cache_check_type="nosc"
       while IFS= read -r opt; do
           case "${opt}" in
-            "passcmd"?*) cache_cmd="${cache_cmd} \"${opt#*[[:space:]]}\"" ;;
+            "passcmd"?*) passcmd="${opt#*[[:space:]]}" ;;
             "sc") cache_check_type="sc" ;;
             *)
               warn "Unknown option \"${opt}\"; skipping \"${key}\"..."
@@ -299,6 +299,7 @@ $(printf "%s\n" "${opts}" | tr ',' '\n')
 EOF
     fi
 
+    unset errcode
     case "${cache_check_type}" in
       "nosc") 
         is_cached "${key}"
@@ -324,22 +325,23 @@ EOF
         ;;
     esac
 
-    case "${cache_cmd}" in
-      cache_*) ;;
-      *) cache_cmd="cache_sign ${key} ${cache_cmd}"
-    esac
-
-    eval "${cache_cmd}"
-    errcode="${?}"
-    if [ "${errcode}" -eq 0 ]; then
-      warn "Successfully cached \"${key}\"."
-    else
+    while IFS="," read -r keytype keyfpr keygrip; do
+      unset errcode
+      cache_key "${keygrip}" "${passcmd}"
+      errcode="${?}"
       case "${errcode}" in
-        "${GPG_SIGN_FAIL}") warn "Gpg failed to sign with \"${key}\"." ;;
-        "${GPG_ENC_FAIL}") warn "Gpg failed to encrypt with \"${key}\"." ;;
-        "${GPG_DEC_FAIL}") warn "Gpg failed to decrypt with \"${key}\"." ;;
+        "${GPP_FAIL}")
+          warn "${GPP_ERRMSG}."
+          continue 2
+          ;;
+        "${GPG_AGENT_FAIL}")
+          warn "${GPG_AGENT_ERRMSG}."
+          continue 2
+          ;;
       esac
-    fi
+    done <<EOF
+$(print_trios "${key}")
+EOF
 
   done
 }
