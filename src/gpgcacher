@@ -142,65 +142,6 @@ EOF
   return 0
 }
 
-
-#
-# Check if a key is cached by using its keygrip with gpg-connect-agent.
-#
-# Globals:
-#   GPG_AGENT_FAIL
-#   GPG_AGENT_NO_CACHE
-#   GPG_AGENT_ERRMSG
-#
-# Parameters:
-#   1: Gpg key.
-#
-# Returns:
-#   0, when successful;
-#   GPG_KEY_NOT_FOUND, when gpg does not find the given key;
-#   GPG_AGENT_FAIL, when gpg-connect-agent prints an error to stdout;
-#   GPG_AGENT_NO_CACHE, when the key is not cached.
-#
-is_cached() {
-  gpg_output="$(gpg --with-keygrip --list-secret-keys --with-colons "${1}")" \
-    || return "${GPG_KEY_NOT_FOUND}"
-
-  keygrips=""
-  while read -r line; do
-    case "${line}" in
-      grp*)
-        kg="${line%:}"
-        kg="${kg##*:}"
-        keygrips="${keygrips} ${kg}"
-        ;;
-      *) continue ;;
-    esac
-  done <<EOF
-  $(printf "%s\n" "${gpg_output}") 
-EOF
-
-  for kg in ${keygrips}; do
-    gpg_agent_output="$(gpg-connect-agent "keyinfo ${kg}" /bye)"
-
-    case "${gpg_agent_output}" in
-      ERR*)
-        GPG_AGENT_ERRMSG="${gpg_agent_output}"
-        return "${GPG_AGENT_FAIL}"
-        ;;
-      OK*) continue ;;
-      *)
-        cache_char="${gpg_agent_output#*D - - }"
-        cache_char="${cache_char%% *}"
-        #
-        # Do string comparison, for the other possible result is a '-'.
-        #
-        [ "${cache_char}" = "1" ] && return 0
-        ;;
-    esac
-  done
-
-  return "${GPG_AGENT_NO_CACHE}"
-}
-
 #
 # Check if a key in a smartcard is cached by using its keygrip with
 # gpg-connect-agent.
@@ -252,23 +193,30 @@ is_sc_cached() {
 is_passphrase_correct() {
   case "${1}" in
     e)
-    unset gpg_output
-    gpg_output="$(
-      printf "\n" \
-        | gpg --armor -o- \
-          --no-options --yes --batch --pinentry-mode loopback \
-          --default-key "${2}" 2>/dev/null
-    )" || {
-      return "${GPG_ENC_FAIL}"
-    }
+      unset gpg_output
+      gpg_output="$(
+        printf "\n" \
+          | gpg --armor -o- \
+            --no-options --yes --batch --pinentry-mode loopback \
+            --encrypt --recipient "${2}" 2>/dev/null
+      )" || return "${GPG_ENC_FAIL}"
 
-    printf "%s" "${gpg_output}" \
-      | gpg -o /dev/null \
-        --no-options --yes --batch --pinentry-mode loopback \
-        --decrypt --default-key "${2}" 2>/dev/null \
-      || return "${GPG_DEC_FAIL}"
-    ;;
+      printf "%s" "${gpg_output}" \
+        | gpg -o /dev/null \
+          --no-options --yes --batch --pinentry-mode loopback \
+          --decrypt --default-key "${2}" 2>/dev/null \
+        || return "${GPG_DEC_FAIL}"
+      ;;
+    s)
+      printf "\n" \
+        | gpg -o /dev/null \
+          --no-options --yes --batch --pinentry-mode loopback \
+          --sign --local-user "${2}" 2>/dev/null \
+        || return "${GPG_SIGN_FAIL}"
+      ;;
   esac
+
+  return 0
 }
 
 #
@@ -352,7 +300,6 @@ main() {
     
     if [ "${key}" != "${opts}" ]; then
       passcmd=""
-      cache_check_type="nosc"
       while IFS= read -r opt; do
           case "${opt}" in
             "passcmd"?*) passcmd="${opt#*[[:space:]]}" ;;
@@ -369,10 +316,6 @@ EOF
 
     unset errcode
     case "${cache_check_type}" in
-      "nosc") 
-        is_cached "${key}"
-        errcode="${?}"
-        ;;
       "sc")
         is_sc_cached "${key}"
         errcode="${?}"
@@ -421,6 +364,7 @@ EOF
         case "${errcode}" in
           "${GPG_ENC_FAIL}") warn "Gpg failed to encrypt test message." ;;
           "${GPG_DEC_FAIL}") warn "Gpg failed to decrypt test message." ;;
+          "${GPG_SIGN_FAIL}") warn "Gpg failed to sign test message." ;;
         esac
 
         warn "Clearing wrong password in cache."
