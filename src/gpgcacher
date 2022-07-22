@@ -2,6 +2,7 @@
 
 PROGNAME="${0##*/}"
 VERSION="v0.1.0"
+GPP_BIN="${GPGCACHE_GPP_BIN:-/usr/lib/gnupg/gpg-preset-passphrase}"
 TMPDIR="${TMPDIR:-"${XDG_RUNTIME_DIR}"}"
 randstr() { tr -dc "[:alnum:]" </dev/urandom | dd count=1 bs=12 2>/dev/null; }
 [ -d "${TMPDIR}" ] \
@@ -18,12 +19,15 @@ GPG_DEC_FAIL=$((GPG_ENC_FAIL + 1))
 GPG_KEY_NOT_FOUND=$((GPG_DEC_FAIL + 1))
 GPG_AGENT_FAIL=$((GPG_KEY_NOT_FOUND + 1))
 GPG_AGENT_NO_CACHE=$((GPG_AGENT_FAIL + 1))
+GPP_FAIL=$((GPG_AGENT_FAIL + 1))
 
 #
 # Instead of creating a different error code for each gpg-connect-agent error,
 # have one (GPG_AGENT_FAIL) and save its error message to be used with `warn()`.
+# The same applies to gpg-preset-passphrase.
 #
 GPG_AGENT_ERRMSG=""
+GPP_ERRMSG=""
 
 #
 # Warn the user through stderr with a short one line message.
@@ -87,13 +91,66 @@ EOF
   return 0
 }
 
+#
+# Cache a given sub key.
+#
+# Globals:
+#   GPG_AGENT_FAIL
+#   GPP_FAIL
+#   GPP_ERRMSG
+#   GPG_AGENT_ERRMSG
+#
+# Parameters:
+#   1: keygrip; and
+#   2: passphrase command (optional).
+#
+# Returns:
+#   0, when successful;
+#   GPP_FAIL, when gpg-preset-passphrase fails.
+#   GPG_AGENT_FAIL, when gpg-connect-agent fails.
+#
+cache_key() {
+  if [ -z "${2}" ]; then
+    unset gpg_agent_output
+    gpg_agent_output="$(
+      gpg-connect-agent <<EOF
+GET_PASSPHRASE ${1} + Passphrase:+ No+passcmd+provide.+A+passphrase+is+needed.
+EOF
+)"
+    case "${gpg_agent_output}" in
+      ERR*)
+        GPG_AGENT_ERRMSG="${gpg_agent_output}"
+        unset gpg_agent_output
+        return "${GPG_AGENT_FAIL}"
+        ;;
+    esac
+
+    unset gpg_agent_output
+  else
+    unset gpp_output
+    gpp_output="$(
+      ${GPP_BIN} --preset "${1}" 2>&1 <<EOF
+$(eval "${2}")
+EOF
+)" || {
+  GPP_ERRMSG="${gpp_output}"
+  unset gpp_output
+  return "${GPP_FAIL}"
+}
+  fi
+
+  return 0
+}
+
 
 #
 # Check if a key is cached by using its keygrip with gpg-connect-agent.
+#
 # Globals:
 #   GPG_AGENT_FAIL
 #   GPG_AGENT_NO_CACHE
 #   GPG_AGENT_ERRMSG
+#
 # Parameters:
 #   1: Gpg key.
 #
@@ -177,79 +234,6 @@ is_sc_cached() {
 }
 
 #
-# Cache a gpg key by making it sign a newline that's outputted to /dev/null.
-# Globals:
-#   GPG_SIGN_FAIL
-# Parameters:
-#   1: Gpg key, 2: A password command (optional).
-# Returns:
-#   0, when successful;
-#   GPG_SIGN_FAIL, when gpg fails to sign.
-#
-cache_sign() {
-  pass_cmd="${2}"
-  if [ -z "${pass_cmd}" ]; then
-    printf "\n" \
-      | gpg -o /dev/null --no-options --use-agent --no-tty --sign --local-user "${1}" \
-        2>/dev/null || return "${GPG_SIGN_FAIL}"
-  else
-    data_file="${TMPDIR}/data_file"
-    printf "\n" 1>"${data_file}"
-
-    gpg -o /dev/null \
-      --no-options --use-agent --no-tty \
-      --batch --pinentry-mode loopback --passphrase-fd 0 \
-        --sign --local-user \
-        "${1}" "${data_file}" 2>/dev/null <<EOF || return "${GPG_SIGN_FAIL}"
-$(eval "${pass_cmd}")
-EOF
-  fi
-
-  return 0
-}
-
-#
-# Cache a gpg key by making it encrypt and decrypt, respectively, stdout and
-# stdin.
-# Globals:
-#   GPG_ENC_FAIL
-#   GPG_DEC_FAIL
-# Parameters:
-#   1: Gpg key, 2: A password command (optional).
-# Returns:
-#   0, when successful;
-#   GPG_ENC_FAIL, when gpg fails to encrypt;
-#   GPG_DEC_FAIL, when gpg fails to decrypt.
-# 
-cache_nosign() {
-  pass_cmd="${2}"
-  encstr="$(
-    printf "GPG" \
-      | gpg --armor -o- --encrypt \
-        --no-options --use-agent --no-tty --recipient "${1}" 2>/dev/null
-  )" || return "${GPG_ENC_FAIL}"
-
-  if [ -z "${pass_cmd}" ]; then
-    printf "%s" "${encstr}" \
-      | gpg -o /dev/null --decrypt \
-        --no-options --use-agent --no-tty --default-key "${1}" 2>/dev/null \
-        || return "${GPG_DEC_FAIL}"
-  else
-    data_file="${TMPDIR}/data_file"
-    printf "%s" "${encstr}" 1>"${data_file}"
-    gpg -o /dev/null --decrypt \
-      --no-options --use-agent --no-tty \
-      --batch --pinentry-mode loopback --passphrase-fd 0 \
-      --default-key "${1}" "${data_file}" \
-      2>/dev/null <<EOF || return "${GPG_DEC_FAIL}"
-$(eval "${pass_cmd}")
-EOF
-  fi
-
-  return 0
-}
-
-#
 # Print the help message to stdout.
 # Globals:
 #   PROGNAME
@@ -289,23 +273,22 @@ main() {
     opts="${k##*:}"
     key="${k%":${opts}"}"
     
-    cache_cmd=""
-    cache_check_type="nosc"
-    while IFS= read -r opt; do
-      if [ "${key}" != "${opt}" ]; then
-        case "${opt}" in
-          "nosign") cache_cmd="cache_nosign ${key} ${cache_cmd}" ;;
-          "passcmd"?*) cache_cmd="${cache_cmd} \"${opt#*[[:space:]]}\"" ;;
-          "sc") cache_check_type="sc" ;;
-          *)
-            warn "Unknown option \"${opt}\"; skipping \"${key}\"..."
-            continue 2
-            ;;
-        esac
-      fi
-    done <<EOF
+    if [ "${key}" != "${opt}" ]; then
+      cache_cmd=""
+      cache_check_type="nosc"
+      while IFS= read -r opt; do
+          case "${opt}" in
+            "passcmd"?*) cache_cmd="${cache_cmd} \"${opt#*[[:space:]]}\"" ;;
+            "sc") cache_check_type="sc" ;;
+            *)
+              warn "Unknown option \"${opt}\"; skipping \"${key}\"..."
+              continue 2
+              ;;
+          esac
+      done <<EOF
 $(printf "%s\n" "${opts}" | tr ',' '\n')
 EOF
+    fi
 
     case "${cache_check_type}" in
       "nosc") 
@@ -352,4 +335,4 @@ EOF
   done
 }
 
-print_trios 0xF2ED14CBC70C4F61
+cache_key 37A0FE0E152A73708B4E0044A640DC0A2D59B3C6 "printf \"1234\""
