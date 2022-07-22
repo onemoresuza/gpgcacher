@@ -379,7 +379,7 @@ EOF
       is_passphrase_correct "${keytype}" "${keyfpr}"
       errcode="${?}"
       if [ "${errcode}" -eq 0 ]; then
-          warn "Successfuly cached \"${key}\"."
+          warn "Successfuly cached sub ${keytype} key from \"${key}\"."
       else
         warn "Key \"${key}\" not cached."
 
