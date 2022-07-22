@@ -234,6 +234,45 @@ is_sc_cached() {
 }
 
 #
+# Test the encrypt gpg command in non-interactive mode to check if the cached
+# password is the correct one.
+#
+# Globals:
+#   GPG_ENC_FAIL
+#   GPG_DEC_FAIL
+#
+# Parameters:
+#   1: key type;
+#   2: key fingerprint.
+#
+# Returns:
+#   0, when successful;
+#   GPG_ENC_FAIL, when gpg fails to encrypt its stdin;
+#   GPG_DEC_FAIL, when gpg fails do decrypt its stdin.
+is_passphrase_correct() {
+  case "${1}" in
+    e)
+    unset gpg_output
+    gpg_output="$(
+      printf "\n" \
+        | gpg --armor -o- \
+          --no-options --yes --batch --pinentry-mode loopback \
+          --default-key "${2}" 2>/dev/null
+    )" || {
+      return "${GPG_ENC_FAIL}"
+    }
+
+    printf "%s" "${gpg_output}" \
+      | gpg -o /dev/null \
+        --no-options --yes --batch --pinentry-mode loopback \
+        --decrypt --default-key "${2}" 2>/dev/null \
+      || return "${GPG_DEC_FAIL}"
+    ;;
+  esac
+}
+
+
+#
 # Print the help message to stdout.
 # Globals:
 #   PROGNAME
@@ -341,6 +380,27 @@ EOF
           continue 2
           ;;
       esac
+
+      unset errcode
+      is_passphrase_correct "${keytype}" "${keyfpr}"
+      errcode="${?}"
+      if [ "${errcode}" -eq 0 ]; then
+          warn "Successfuly cached \"${key}\"."
+      else
+        warn "Key \"${key}\" not cached."
+
+        case "${errcode}" in
+          "${GPG_ENC_FAIL}")
+            warn "Gpg failed to encrypt test message."
+            ;;
+          "${GPG_DEC_FAIL}")
+            warn "Gpg failed to decrypt test message."
+            ;;
+        esac
+
+        continue
+      fi
+
     done <<EOF
 $(print_trios "${key}")
 EOF
