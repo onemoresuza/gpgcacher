@@ -295,8 +295,6 @@ EOF
 # 1) the user calls "SCD SERIALNO" with gpg-connect-agent.
 #
 is_sc_cached() {
-  gpg --list-secret-keys "${1}" 1>/dev/null 2>&1 || return "${GPG_KEY_NOT_FOUND}"
-
   gpg_agent_output="$(gpg-connect-agent "scd getinfo card_list" /bye)"
 
   case "${gpg_agent_output}" in
@@ -313,48 +311,18 @@ is_sc_cached() {
 #
 # Cache a key in a smart card.
 #
-# Globals:
-#   GPG_KEY_NOT_FOUND
-#   GPG_AGENT_FAIL
-#   GPG_AGENT_ERRMSG
-#
 # Parameters:
-#   1: key fingerprint.
-#
-# Returns:
-#   0, when successful;
-#   GPG_KEY_NOT_FOUND, when gpg fail to find a key with the given fingerprint;
-#   GPG_AGENT_FAIL, when gpg-connect-agent fails.
+#   1: sc serial number.
 #
 cache_sc_key() {
-  unset key
-  key="${1}"
+  unset serialno
+  serialno="${1}"
 
-  unset errcode
-  errcode="$(is_sc_cached "${key}"; printf "%d" "${?}")"
-  case "${errcode}" in
-    0) warn "Key \"${key}\" is already cached; skipping..." ;;
-    "${GPG_KEY_NOT_FOUND}") warn "Gpg failed to found key \"${key}\"." ;;
-    "${GPG_AGENT_NO_CACHE}")
-      unset serialno
-      serialno="$(
-        read -r sn <<EOF
-$(gpg-connect-agent 'scd serialno' /bye)
-EOF
-        printf "%s" "${sn##*[[:space:]]}"
-      )"
-
-      unset gpg_agent_output
-      gpg_agent_output="$(gpg-connect-agent "scd checkpin ${serialno}" /bye)"
-      case "${gpg_agent_output}" in
-        OK*) warn "Successfuly cached \"${key}\" in smart card." ;;
-        ERR*)
-          warn "${gpg_agent_output}"
-          warn "The key will be wrongly taken as cached by the program."
-          warn "Please remove it and re-insert it to try again."
-          ;;
-      esac
-      ;;
+  unset gpg_agent_output
+  gpg_agent_output="$(gpg-connect-agent "scd checkpin ${serialno}" /bye)"
+  case "${gpg_agent_output}" in
+    OK*) warn "Successfuly cached sc of serial number \"${serialno}\"." ;;
+    ERR*) warn "gpg-connect-agent -- \"${gpg_agent_output}\"." ;;
   esac
 }
 
