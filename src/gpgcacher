@@ -203,12 +203,16 @@ is_sc_cached() {
 }
 
 #
-# Test the encrypt gpg command in non-interactive mode to check if the cached
-# password is the correct one.
+# Run a command that needs the key to cached, to check if the cached passphrase
+# is correct.
 #
 # Globals:
+#   ALLOW_SSH_KEY_TEST
 #   GPG_ENC_FAIL
 #   GPG_DEC_FAIL
+#   GPG_SIGN_FAIL
+#   GPG_EXP_SSH_FAIL
+#   SSH_ADD_TEST_FAIL
 #
 # Parameters:
 #   1: key type;
@@ -217,7 +221,11 @@ is_sc_cached() {
 # Returns:
 #   0, when successful;
 #   GPG_ENC_FAIL, when gpg fails to encrypt its stdin;
-#   GPG_DEC_FAIL, when gpg fails do decrypt its stdin.
+#   GPG_DEC_FAIL, when gpg fails do decrypt its stdin;
+#   GPG_SIGN_FAIL, when gpg fails to sign its stdin;
+#   GPG_EXP_SSH_FAIL, when gpg fails to export the publi ssh key;
+#   SSH_ADD_TEST_FAIL, when ssh-add fails with the `-T` option.
+#
 is_passphrase_correct() {
   case "${1}" in
     e)
