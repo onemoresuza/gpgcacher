@@ -186,6 +186,20 @@ EOF
 #   GPG_AGENT_FAIL, when gpg-connect-agent prints an error to stdout;
 #   GPG_AGENT_NO_CACHE, when the key is not cached.
 #
+# This is a somewhat hacky way of getting the cache info: the `scd getinfo
+# card_list` from gpg-connect-agent returns an error not when the key is not
+# cached, but when it is not activated. This behavior is present across various
+# `scd` sub commands.
+#
+# The hacky part comes from the fact that, if the key is activated, but its pin
+# not cached, the function will return 0, even though the smart card is not
+# cached. However, it is safe to assume that the operations the user will have
+# with the smart card will not only activate it, but also cache its pin (e. g.,
+# any openpgp operation).
+#
+# Some of the edge cases that will cause the function to incorrectly return are:
+# 1) the user calls "SCD SERIALNO" with gpg-connect-agent.
+#
 is_sc_cached() {
   gpg --list-secret-keys "${1}" 1>/dev/null 2>&1 || return "${GPG_KEY_NOT_FOUND}"
 
