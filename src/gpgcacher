@@ -265,50 +265,6 @@ EOF
 }
 
 #
-# Check if a key in a smartcard is cached by using its keygrip with
-# gpg-connect-agent.
-# Globals:
-#   GPG_AGENT_FAIL
-#   GPG_AGENT_NO_CACHE
-#   GPG_AGENT_ERRMSG
-# Parameters:
-#   1: Gpg key.
-#
-# Returns:
-#   0, when successful;
-#   GPG_KEY_NOT_FOUND, when gpg does not find the given key;
-#   GPG_AGENT_FAIL, when gpg-connect-agent prints an error to stdout;
-#   GPG_AGENT_NO_CACHE, when the key is not cached.
-#
-# This is a somewhat hacky way of getting the cache info: the `scd getinfo
-# card_list` from gpg-connect-agent returns an error not when the key is not
-# cached, but when it is not activated. This behavior is present across various
-# `scd` sub commands.
-#
-# The hacky part comes from the fact that, if the key is activated, but its pin
-# not cached, the function will return 0, even though the smart card is not
-# cached. However, it is safe to assume that the operations the user will have
-# with the smart card will not only activate it, but also cache its pin (e. g.,
-# any openpgp operation).
-#
-# Some of the edge cases that will cause the function to incorrectly return are:
-# 1) the user calls "SCD SERIALNO" with gpg-connect-agent.
-#
-is_sc_cached() {
-  gpg_agent_output="$(gpg-connect-agent "scd getinfo card_list" /bye)"
-
-  case "${gpg_agent_output}" in
-    ERR*)
-      GPG_AGENT_ERRMSG="${gpg_agent_output}"
-      return "${GPG_AGENT_FAIL}"
-      ;;
-    S[[:space:]]SERIALNO[[:space:]]*) return 0;;
-  esac
-
-  return "${GPG_AGENT_NO_CACHE}"
-}
-
-#
 # Cache a key in a smart card.
 #
 # Parameters:
