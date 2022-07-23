@@ -333,14 +333,27 @@ cache_sc_key() {
   unset errcode
   errcode="$(is_sc_cached "${key}"; printf "%d" "${?}")"
   case "${errcode}" in
-    0)
-      warn "Key \"${key}\" is already cached; skipping..."
-      ;;
-    "${GPG_KEY_NOT_FOUND}")
-      warn "Gpg failed to found key \"${key}\"."
-      ;;
-    "${GPG_AGENT_FAIL}")
-      warn "gpg-connect-agent error: \"${GPG_AGENT_ERRMSG}\"."
+    0) warn "Key \"${key}\" is already cached; skipping..." ;;
+    "${GPG_KEY_NOT_FOUND}") warn "Gpg failed to found key \"${key}\"." ;;
+    "${GPG_AGENT_NO_CACHE}")
+      unset serialno
+      serialno="$(
+        read -r sn <<EOF
+$(gpg-connect-agent 'scd serialno' /bye)
+EOF
+        printf "%s" "${sn##*[[:space:]]}"
+      )"
+
+      unset gpg_agent_output
+      gpg_agent_output="$(gpg-connect-agent "scd checkpin ${serialno}" /bye)"
+      case "${gpg_agent_output}" in
+        OK*) warn "Successfuly cached \"${key}\" in smart card." ;;
+        ERR*)
+          warn "${gpg_agent_output}"
+          warn "The key will be wrongly taken as cached by the program."
+          warn "Please remove it and re-insert it to try again."
+          ;;
+      esac
       ;;
   esac
 }
