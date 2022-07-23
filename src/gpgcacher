@@ -296,6 +296,40 @@ EOF
   esac
 }
 
+#
+# Cache a key in a smart card.
+#
+# Globals:
+#   GPG_KEY_NOT_FOUND
+#   GPG_AGENT_FAIL
+#   GPG_AGENT_ERRMSG
+#
+# Parameters:
+#   1: key fingerprint.
+#
+# Returns:
+#   0, when successful;
+#   GPG_KEY_NOT_FOUND, when gpg fail to find a key with the given fingerprint;
+#   GPG_AGENT_FAIL, when gpg-connect-agent fails.
+#
+cache_sc_key() {
+  unset key
+  key="${1}"
+
+  unset errcode
+  errcode="$(is_sc_cached "${key}"; printf "%d" "${?}")"
+  case "${errcode}" in
+    0)
+      warn "Key \"${key}\" is already cached; skipping..."
+      ;;
+    "${GPG_KEY_NOT_FOUND}")
+      warn "Gpg failed to found key \"${key}\"."
+      ;;
+    "${GPG_AGENT_FAIL}")
+      warn "gpg-connect-agent error: \"${GPG_AGENT_ERRMSG}\"."
+      ;;
+  esac
+}
 
 #
 # Print the help message to stdout.
@@ -378,21 +412,7 @@ EOF
         continue
       }
 
-      is_sc_cached "${key}"
-      case "${errcode}" in
-        0)
-          warn "Key \"${key}\" is already cached; skipping..."
-          continue
-          ;;
-        "${GPG_KEY_NOT_FOUND}")
-          warn "Gpg failed to found key \"${key}\"."
-          continue
-          ;;
-        "${GPG_AGENT_FAIL}")
-          warn "gpg-connect-agent error: \"${GPG_AGENT_ERRMSG}\"."
-          continue
-          ;;
-      esac
+      cache_sc_key "${key}"
     else
       while IFS="," read -r keytype keyfpr keygrip; do
 
