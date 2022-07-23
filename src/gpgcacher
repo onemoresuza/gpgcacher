@@ -376,7 +376,7 @@ help_msg() {
   CACHE_OPTS
 
   passcmd PASS_CMD,\tUse the stdout of PASS_CMD as the passphrase
-  sc,\t\t\tIndicate that the key is in a smartcard
+  sc\t\t\tIndicate that KEY_ID is actually a hexadecimal sc serial number
 
   " "${PROGNAME}"
 }
@@ -415,12 +415,12 @@ main() {
     key="${k%":${opts}"}"
     
     if [ "${key}" != "${opts}" ]; then
-      unset passcmd
+      unset passcmd is_sc
 
       while IFS= read -r opt; do
           case "${opt}" in
             "passcmd"?*) passcmd="${opt#*[[:space:]]}" ;;
-            "sc") cache_check_type="sc" ;;
+            "sc") is_sc="1" ;;
             *)
               warn "Unknown option \"${opt}\"; skipping \"${key}\"..."
               continue 2
@@ -432,7 +432,7 @@ EOF
     fi
 
     unset errcode
-    if [ "${cache_check_type}" = "sc" ]; then
+    if [ -n "${is_sc}" ]; then
       [ -n "${passcmd}" ] && {
         warn "Option \"passcmd\" is incompatible with \"sc\" option."
         warn "Skipping..."
