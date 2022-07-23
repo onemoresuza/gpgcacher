@@ -112,7 +112,7 @@ EOF
 #   GPP_FAIL, when gpg-preset-passphrase fails.
 #   GPG_AGENT_FAIL, when gpg-connect-agent fails.
 #
-cache_key() {
+preset_passphrase() {
   if [ -z "${2}" ]; then
     unset gpg_agent_output
     gpg_agent_output="$(
@@ -375,7 +375,7 @@ EOF
         }
 
         unset errcode
-        cache_key "${keygrip}" "${passcmd}"
+        preset_passphrase "${keygrip}" "${passcmd}"
         errcode="${?}"
         case "${errcode}" in
           "${GPP_FAIL}")
