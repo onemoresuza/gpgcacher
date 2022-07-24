@@ -285,18 +285,16 @@ cache_key() {
     unset errcode
     preset_passphrase "${keygrip}" "${passcmd}"
     errcode="${?}"
-    case "${errcode}" in
-      "${GPP_FAIL}")
-        warn "Key \"${key}\" not cached."
-        warn "${GPP_ERRMSG}."
-        continue
-        ;;
-      "${GPG_AGENT_FAIL}")
-        warn "Key \"${key}\" not cached."
-        warn "gpg-connect-agent: ${GPG_AGENT_ERRMSG}."
-        continue
-        ;;
-    esac
+    [ "${errcode}" -ne 0 ] && {
+      warn "Key \"${key}\" not cached."
+
+      case "${errcode}" in
+        "${GPP_FAIL}") warn "${GPP_ERRMSG}." ;;
+        "${GPG_AGENT_FAIL}") warn "gpg-connect-agent: ${GPG_AGENT_ERRMSG}." ;;
+      esac
+
+      continue
+    }
 
     unset errcode
     is_passphrase_correct "${keytype}" "${keyfpr}"
