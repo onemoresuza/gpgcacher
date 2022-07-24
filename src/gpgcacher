@@ -3,7 +3,6 @@
 PROGNAME="${0##*/}"
 VERSION="v1.1.1"
 GPP_BIN="${GPGCACHE_GPP_BIN:-/usr/lib/gnupg/gpg-preset-passphrase}"
-ALLOW_SSH_KEY_TEST=""
 TMPDIR="${TMPDIR:-"${XDG_RUNTIME_DIR}"}"
 randstr() { tr -dc "[:alnum:]" </dev/urandom | dd count=1 bs=12 2>/dev/null; }
 [ -d "${TMPDIR}" ] \
@@ -220,7 +219,6 @@ is_passphrase_correct() {
         || return "${GPG_SIGN_FAIL}"
       ;;
     a)
-      [ -z "${ALLOW_SSH_KEY_TEST}" ] && return 0
       unset ssh_pub_key
       ssh_pub_key="${TMPDIR}/ssh_pub_key"
       : 1>"${ssh_pub_key}"
@@ -228,8 +226,26 @@ is_passphrase_correct() {
       gpg -o "${ssh_pub_key}" --export-ssh-key "${2}" 2>/dev/null \
         || return "${GPG_EXP_SSH_FAIL}"
 
-      ssh-add -T "${ssh_pub_key}" \
-        || return "${SSH_ADD_TEST_FAIL}"
+      #
+      # Since there's no way of setting the behavior of the pinentry called by
+      # ssh-add, to check whether the correct passphrase was cached, one must
+      # try to kill the pinentry process: if pkill succeeds, the cached
+      # passphrase is not the correct one; if it fails, it is the latter.
+      #
+      # The loop is to ensure there will be enough time between the call of
+      # ssh-add and that of pkill, independently of system performance: since
+      # the loops only runs while the ssh-add command is running, one can be
+      # sure that the wrong passphrase cached will trigger the early return.
+      #
+      # The sleep call is just for avoiding calling the kill built-in as fast as
+      # possible.
+      #
+      ssh-add -T "${ssh_pub_key}" 1>/dev/null 2>&1 &
+      ssh_add_pid="${!}"
+      while kill -0 "${ssh_add_pid}" 1>/dev/null 2>&1; do
+        sleep 0.1
+        pkill pinentry 1>/dev/null 2>&1 && return "${SSH_ADD_TEST_FAIL}"
+      done
       ;;
   esac
 
