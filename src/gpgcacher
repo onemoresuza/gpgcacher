@@ -361,7 +361,7 @@ cache_sc_key() {
 #
 help_msg() {
   printf """
-  Usage: %s [OPTION]... KEY_ID[:CACHE_OPTS] [KEY_ID[:CACHE_OPTS]]...
+  Usage: %s [OPTION]... ID[:CACHE_OPTS] [ID[:CACHE_OPTS]]...
   Cache gpg keys.
 
   -a,\t\tAllow ssh keys cache to be tested
@@ -372,7 +372,7 @@ help_msg() {
   CACHE_OPTS
 
   passcmd PASS_CMD,\tUse the stdout of PASS_CMD as the passphrase
-  sc\t\t\tIndicate that KEY_ID is actually a hexadecimal sc serial number
+  sc\t\t\tIndicate that ID is a hexadecimal smart card serial number
 
   " "${PROGNAME}"
 }
