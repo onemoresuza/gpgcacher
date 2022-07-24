@@ -380,7 +380,6 @@ help_msg() {
   Usage: %s [OPTION]... ID[:CACHE_OPTS] [ID[:CACHE_OPTS]]...
   Cache gpg keys.
 
-  -a,\t\tAllow ssh keys cache to be tested
   -g,\t\tSet the path to the gpg-preset-passphrase binary
   -h,\t\tPrint this help message to stdout
   -V,\t\tPrint the script's version
@@ -397,14 +396,13 @@ main() {
   mkdir -p "${TMPDIR}"
   trap 'rm -rf "${TMPDIR}"' EXIT INT
 
-  sopts="ag:hV"
+  sopts="g:hV"
   while getopts "${sopts}" opt; do
     case "${opt}" in
       "h")
         help_msg
         exit 0
         ;;
-      "a") ALLOW_SSH_KEY_TEST="1" ;;
       "g")
         [ -x "${OPTARG}" ] || {
           warn "\"${OPTARG}\" is not executable."
