@@ -273,9 +273,19 @@ EOF
 #   2: a passphrase command (optional).
 #
 cache_key() {
-  unset key passcmd
+  unset key passcmd trios errcode
   key="${1}"
   passcmd="${2}"
+  trios=$(print_trios "${key}")
+  errcode="${?}"
+
+  case "${errcode}" in
+    "${GPG_KEY_NOT_FOUND}")
+      warn "gpg failed to find key of id \"${key}\"."
+      return 0
+      ;;
+  esac
+
 
   while IFS="," read -r keytype keyfpr keygrip; do
     is_cached "${keygrip}" && {
@@ -322,7 +332,7 @@ cache_key() {
     fi
 
   done <<EOF
-$(print_trios "${key}")
+$(printf "%s\n" "${trios}")
 EOF
 }
 
