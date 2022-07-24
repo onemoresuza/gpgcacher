@@ -293,7 +293,7 @@ cache_key() {
         ;;
       "${GPG_AGENT_FAIL}")
         warn "Key \"${key}\" not cached."
-        warn "${GPG_AGENT_ERRMSG}."
+        warn "gpg-connect-agent: ${GPG_AGENT_ERRMSG}."
         continue
         ;;
     esac
@@ -307,10 +307,10 @@ cache_key() {
       warn "Key \"${key}\" not cached."
 
       case "${errcode}" in
-        "${GPG_ENC_FAIL}") warn "Gpg failed to encrypt test message." ;;
-        "${GPG_DEC_FAIL}") warn "Gpg failed to decrypt test message." ;;
-        "${GPG_SIGN_FAIL}") warn "Gpg failed to sign test message." ;;
-        "${GPG_EXP_SSH_FAIL}") warn "Gpg failed to export ssh key." ;;
+        "${GPG_ENC_FAIL}") warn "gpg failed to encrypt test message." ;;
+        "${GPG_DEC_FAIL}") warn "gpg failed to decrypt test message." ;;
+        "${GPG_SIGN_FAIL}") warn "gpg failed to sign test message." ;;
+        "${GPG_EXP_SSH_FAIL}") warn "gpg failed to export ssh key." ;;
         "${SSH_ADD_TEST_FAIL}") warn "ssh-add failed to test public key." ;;
       esac
 
@@ -341,7 +341,7 @@ cache_sc_key() {
   gpg_agent_output="$(gpg-connect-agent "scd checkpin ${serialno}" /bye)"
   case "${gpg_agent_output}" in
     OK*) warn "Successfuly cached sc of serial number \"${serialno}\"." ;;
-    ERR*) warn "gpg-connect-agent -- \"${gpg_agent_output}\"." ;;
+    ERR*) warn "gpg-connect-agent: ${gpg_agent_output}." ;;
   esac
 }
 
