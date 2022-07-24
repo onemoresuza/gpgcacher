@@ -1,7 +1,7 @@
 #!/bin/sh
 
 PROGNAME="${0##*/}"
-VERSION="v1.1.1"
+VERSION="v2.0.0"
 GPP_BIN="${GPGCACHE_GPP_BIN:-/usr/lib/gnupg/gpg-preset-passphrase}"
 TMPDIR="${TMPDIR:-"${XDG_RUNTIME_DIR}"}"
 randstr() { tr -dc "[:alnum:]" </dev/urandom | dd count=1 bs=12 2>/dev/null; }
