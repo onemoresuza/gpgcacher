@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] 2022-07-23
+### Added
+- error handling for when no positional arguments are provide: the script exits
+  now with an error code of 1.
+### Changed
+- help message, so that it better reflects the script capabilities of handling
+  keys not only in the key chain, but also in smart cards.
+
 ## [1.1.0] 2022-07-23
 ### Added
 - Support for smart cards, which use their serial numbers instead of stored

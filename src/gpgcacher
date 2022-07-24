@@ -1,7 +1,7 @@
 #!/bin/sh
 
 PROGNAME="${0##*/}"
-VERSION="v1.1.0"
+VERSION="v1.1.1"
 GPP_BIN="${GPGCACHE_GPP_BIN:-/usr/lib/gnupg/gpg-preset-passphrase}"
 ALLOW_SSH_KEY_TEST=""
 TMPDIR="${TMPDIR:-"${XDG_RUNTIME_DIR}"}"
