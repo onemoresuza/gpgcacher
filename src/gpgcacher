@@ -56,8 +56,9 @@ warn() {
 #
 print_trios() {
   unset gpg_output
-  gpg_output="$(gpg --list-secret-keys --with-keygrip --with-colons "${1}")" \
-    || return "${GPG_KEY_NOT_FOUND}"
+  gpg_output="$(
+    gpg --list-secret-keys --with-keygrip --with-colons "${1}" 2>/dev/null
+  )" || return "${GPG_KEY_NOT_FOUND}"
 
   unset passed_uid_line keytype keyfpr keygrip
   while IFS=":" read -r infotype info; do
