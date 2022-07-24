@@ -396,7 +396,7 @@ main() {
   mkdir -p "${TMPDIR}"
   trap 'rm -rf "${TMPDIR}"' EXIT INT
 
-  sopts="g:hV"
+  sopts=":g:hV"
   while getopts "${sopts}" opt; do
     case "${opt}" in
       "h")
@@ -414,6 +414,14 @@ main() {
       "V")
         printf "%s %s\n" "${PROGNAME}" "${VERSION}"
         exit 0
+        ;;
+      ":")
+        warn "Option lacks argument -- \"${OPTARG}\"."
+        exit 1
+        ;;
+      "?")
+        warn "Unknown option -- \"${OPTARG}\"."
+        exit 1
         ;;
     esac
   done
