@@ -4,7 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0]
+## [1.1.0] 2022-07-23
+### Added
+- Support for smart cards, which use their serial numbers instead of stored
+  keys.
+### Changed
+- The `sc` cache option help message description.
+
+## [1.0.0] - 2022-07-23
 ### Changed
 - Authentication keys are now supported.
 - `gpg-connect-agent` and `gpg-preset-passphrase` are now used to cache
@@ -16,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Caching of smart card keys (temporally).
 - Caching of master keys; now only its sub keys are cached.
 
-## [0.1.0]
+## [0.1.0] - 2022-07-16
 ### Added
 - Capability of checking if key in a smart card is cached.
 
