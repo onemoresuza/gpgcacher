@@ -406,6 +406,11 @@ main() {
 
   shift $((OPTIND - 1))
 
+  [ "${#}" -eq 0 ] && {
+    warn "No key-id/serial number provided."
+    exit 1
+  }
+
   for k in "${@}"; do
     opts="${k##*:}"
     key="${k%":${opts}"}"
