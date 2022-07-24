@@ -172,8 +172,8 @@ EOF
 
 
 #
-# Run a command that needs the key to cached, to check if the cached passphrase
-# is correct.
+# Run a command that needs the key to be cached to check if the cached
+# passphrase is the correct one.
 #
 # Globals:
 #   ALLOW_SSH_KEY_TEST
