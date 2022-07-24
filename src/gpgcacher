@@ -265,6 +265,69 @@ EOF
 }
 
 #
+# Cache non smart card keys
+#
+# Parameters:
+#   1: keygrip;
+#   2: a passphrase command (optional).
+#
+cache_key() {
+  unset key passcmd
+  key="${1}"
+  passcmd="${2}"
+
+  while IFS="," read -r keytype keyfpr keygrip; do
+    is_cached "${keygrip}" && {
+      warn "Sub ${keytype} key is cached; skipping..."
+      continue
+    }
+
+    unset errcode
+    preset_passphrase "${keygrip}" "${passcmd}"
+    errcode="${?}"
+    case "${errcode}" in
+      "${GPP_FAIL}")
+        warn "Key \"${key}\" not cached."
+        warn "${GPP_ERRMSG}."
+        continue
+        ;;
+      "${GPG_AGENT_FAIL}")
+        warn "Key \"${key}\" not cached."
+        warn "${GPG_AGENT_ERRMSG}."
+        continue
+        ;;
+    esac
+
+    unset errcode
+    is_passphrase_correct "${keytype}" "${keyfpr}"
+    errcode="${?}"
+    if [ "${errcode}" -eq 0 ]; then
+        warn "Successfuly cached sub ${keytype} key from \"${key}\"."
+    else
+      warn "Key \"${key}\" not cached."
+
+      case "${errcode}" in
+        "${GPG_ENC_FAIL}") warn "Gpg failed to encrypt test message." ;;
+        "${GPG_DEC_FAIL}") warn "Gpg failed to decrypt test message." ;;
+        "${GPG_SIGN_FAIL}") warn "Gpg failed to sign test message." ;;
+        "${GPG_EXP_SSH_FAIL}") warn "Gpg failed to export ssh key." ;;
+        "${SSH_ADD_TEST_FAIL}") warn "ssh-add failed to test public key." ;;
+      esac
+
+      warn "Clearing wrong password in cache."
+      clear_cache "${keygrip}" || {
+        warn "Failed to clear wrong password in cache."
+        warn "Try to manually clear it by passing \"${key}\" keygrip"
+        warn "to the CLEAR_PASSPHRASE command of gpg-connect-agent."
+      }
+    fi
+
+  done <<EOF
+$(print_trios "${key}")
+EOF
+}
+
+#
 # Cache a key in a smart card.
 #
 # Parameters:
@@ -355,7 +418,6 @@ $(printf "%s\n" "${opts}" | tr ',' '\n')
 EOF
     fi
 
-    unset errcode
     if [ -n "${is_sc}" ]; then
       [ -n "${passcmd}" ] && {
         warn "Option \"passcmd\" is incompatible with \"sc\" option."
@@ -365,61 +427,8 @@ EOF
 
       cache_sc_key "${key}"
     else
-      while IFS="," read -r keytype keyfpr keygrip; do
-
-        [ -n "${check_cache_by_keygrip}" ] && {
-          is_cached "${keygrip}" && {
-            warn "Sub ${keytype} key is cached; skipping..."
-            continue
-          }
-        }
-
-        unset errcode
-        preset_passphrase "${keygrip}" "${passcmd}"
-        errcode="${?}"
-        case "${errcode}" in
-          "${GPP_FAIL}")
-            warn "Key \"${key}\" not cached."
-            warn "${GPP_ERRMSG}."
-            continue 2
-            ;;
-          "${GPG_AGENT_FAIL}")
-            warn "Key \"${key}\" not cached."
-            warn "${GPG_AGENT_ERRMSG}."
-            continue 2
-            ;;
-        esac
-
-        unset errcode
-        is_passphrase_correct "${keytype}" "${keyfpr}"
-        errcode="${?}"
-        if [ "${errcode}" -eq 0 ]; then
-            warn "Successfuly cached sub ${keytype} key from \"${key}\"."
-        else
-          warn "Key \"${key}\" not cached."
-
-          case "${errcode}" in
-            "${GPG_ENC_FAIL}") warn "Gpg failed to encrypt test message." ;;
-            "${GPG_DEC_FAIL}") warn "Gpg failed to decrypt test message." ;;
-            "${GPG_SIGN_FAIL}") warn "Gpg failed to sign test message." ;;
-            "${GPG_EXP_SSH_FAIL}") warn "Gpg failed to export ssh key." ;;
-            "${SSH_ADD_TEST_FAIL}") warn "ssh-add failed to test public key." ;;
-          esac
-
-          warn "Clearing wrong password in cache."
-          clear_cache "${keygrip}" || {
-            warn "Failed to clear wrong password in cache."
-            warn "Try to manually clear it by passing \"${key}\" keygrip"
-            warn "to the CLEAR_PASSPHRASE command of gpg-connect-agent."
-          }
-
-          continue
-        fi
-
-      done <<EOF
-$(print_trios "${key}")
-EOF
-  fi
+      cache_key "${key}" "${passcmd}"
+    fi
 
   done
 }
