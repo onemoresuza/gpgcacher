@@ -1,6 +1,6 @@
 # gpgcacher
 
-A posix shell script for caching gpg's encryption and signing keys.
+A posix shell script for caching gpg keys.
 
 # Rationale
 Why not just use [keychain](https://www.funtoo.org/Funtoo:Keychain)? Firstly,
@@ -43,10 +43,10 @@ if wantagent gpg; then
 fi
 ```
 
-Note the `--sign` option in the `gpg`. Moreover, the error message for this case
-is very misleading, since it leads the user to question either the install or the
-configuration in `gpg-agent.conf` of the `pinentry` program, which has nothing
-to do with the problem at hand.
+Note the `--sign` option in the `gpg` command --- inside `${gpg_prog_name}`.
+Moreover, the error message for this case is very misleading, since it leads the
+user to question either the install or the configuration in of the `pinentry`
+program, which has nothing to do with the problem at hand.
 
 # Acknowledgments
 [demure](https://demu.red/blog/2017/03/how-to-check-if-your-smartcards-gpg-key-is-in-cache-part-3/)
